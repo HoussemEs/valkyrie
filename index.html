@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Valkyrie</title>
+  <style>
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h3 { margin-top: 0; font-weight: 500; }
+
+    /* Panels */
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      box-shadow: inset 0 0 8px rgba(0,0,0,.4);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      font-size: 13px;
+      border-bottom: 1px solid #30363d;
+      background: #0d1117;
+      color: #8b949e;
+    }
+    .panel-body {
+      padding: 12px;
+      overflow-y: auto;
+      height: 55vh;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    /* Buttons & inputs */
+    button {
+      background: transparent;
+      border: 1px solid #30363d;
+      color: #f0f6fc;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: background .2s, transform .1s, border-color .2s;
+    }
+    button:hover { background: #21262d; border-color: #3b3f45; }
+    button:active { transform: scale(0.98); }
+
+    .input-section {
+      display: flex; flex-direction: column; gap: 10px; margin-top: 16px;
+    }
+    textarea, select {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px;
+      color: #e6edf3;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    textarea:focus, select:focus, button:focus {
+      outline: none;
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 2px rgba(88,166,255,.3);
+    }
+    .status-bar { margin-top: 8px; font-size: 12px; color: #8b949e; }
+
+    /* Files explorer */
+    .file-container {
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .file-header {
+      background: #0d1117;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+      cursor: pointer;
+      color: #58a6ff;
+    }
+    .file-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    .file-actions {
+      display: inline-flex;
+      gap: 6px;
+    }
+    .file-content {
+      padding: 10px;
+      background: #161b22;
+      display: none;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .badge {
+      border: 1px solid #30363d;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #8b949e;
+    }
+    .floating-run {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 999;
+    }
+    .floating-run button {
+      background: #141414;
+      border: 1px solid #222222;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 20px;
+      border-radius: 50px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.5);
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+    }
+    .floating-run button:hover {
+      background: #000;
+    }
+    .floating-run button:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body>
+  <h3>⚜️ Valkyrie</h3>
+
+  <!-- Loading console -->
+  <div id="console-panel" class="panel">
+    <div class="panel-header">
+      <span>Loading Console</span>
+      <div>
+        <button onclick="toggleConsole()">🔁 Show Console</button>
+        <button id="clear-btn" onclick="clearConsole()">🧹 Clear</button>
+      </div>
+    </div>
+    <div id="console" class="panel-body"></div>
+  </div>
+
+  <!-- Generated files explorer -->
+  <div id="files-panel" class="panel" style="display:none;">
+    <div class="panel-header">
+      <span>Generated Files</span>
+      <div>
+        <button onclick="toggleConsole()">🔁 Show Console</button>
+        <button onclick="expandAll()">➕ Expand All</button>
+        <button onclick="collapseAll()">➖ Collapse All</button>
+      </div>
+    </div>
+    <div id="files" class="panel-body" style="white-space: normal;"></div>
+  </div>
+
+  <!-- Inputs -->
+  <div class="input-section">
+    <textarea id="context" rows="3" placeholder="Enter context"></textarea>
+    <textarea id="task" rows="3" placeholder="Enter task"></textarea>
+    <select id="folder">
+    </select>
+    <!-- <option value="MasterMP">🌱 MasterMP (Java)</option>
+    <option value="gateway-service">🌱 GATEWAY (Java)</option>
+    <option value="Progest_FF">⚡ Progest_FF (Angular)</option> -->
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+      <input type="checkbox" id="include_backend">
+      Include backend/API structure files
+    </label>
+    <!-- <button onclick="sendTask()">🚀 Run Workflow</button> -->
+    <div class="status-bar" id="status">Not connected</div>
+  </div>
+  <div class="floating-run">
+    <button onclick="sendTask()">🚀 Run Workflow</button>
+  </div>
+
+<script>
+  const consoleDiv = document.getElementById("console");
+  const filesDiv   = document.getElementById("files");
+  const statusBar  = document.getElementById("status");
+  const consolePanel = document.getElementById("console-panel");
+  const filesPanel   = document.getElementById("files-panel");
+
+  let ws;
+  let reconnectInterval = 2000; // start with 2s
+  let collectingConsole = true;
+  let fileCounter = 1;
+
+  async function populateProjects() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      setTimeout(populateProjects, 500); // wait for WS
+      return;
+    }
+
+    ws.send(JSON.stringify({ action: "list_projects" })); // request projects from server
+  }
+
+  // Handle server response for project list
+  function handleProjectList(projects) {
+    const folderSelect = document.getElementById("folder");
+    folderSelect.innerHTML = ""; // clear existing
+    projects.forEach(proj => {
+      const option = document.createElement("option");
+      option.value = proj.name;
+      option.textContent = `${proj.emoji} ${proj.name} (${proj.type})`;
+      folderSelect.appendChild(option);
+    });
+  }
+
+  // --- Helpers ---
+  function appendConsole(msg) {
+    const line = document.createElement("div");
+    line.textContent = msg;
+    consoleDiv.appendChild(line);
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+  }
+
+  function clearConsole() {
+    consoleDiv.innerHTML = "";
+    appendConsole("🧹 Console cleared");
+  }
+
+  function toggleConsole() {
+    const showConsole = consolePanel.style.display === "none";
+    consolePanel.style.display = showConsole ? "block" : "none";
+    filesPanel.style.display   = showConsole ? "none"  : "block";
+  }
+
+  function expandAll() {
+    document.querySelectorAll(".file-content").forEach(el => el.style.display = "block");
+  }
+
+  function collapseAll() {
+    document.querySelectorAll(".file-content").forEach(el => el.style.display = "none");
+  }
+
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+
+  function downloadFile(filename, content) {
+    const blob = new Blob([content], {type: "text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // --- File naming detection ---
+  function detectFileName(code, lang) {
+    if (lang === "java") {
+      const classMatch = code.match(/\bclass\s+([A-Z][A-Za-z0-9_]*)/);
+      if (classMatch) return classMatch[1] + ".java";
+      const ifaceMatch = code.match(/\binterface\s+([A-Z][A-Za-z0-9_]*)/);
+      if (ifaceMatch) return ifaceMatch[1] + ".java";
+      const enumMatch = code.match(/\benum\s+([A-Z][A-Za-z0-9_]*)/);
+      if (enumMatch) return enumMatch[1] + ".java";
+      return null;
+    }
+    if (lang === "ts" || lang === "typescript") {
+      const classMatch = code.match(/\bexport\s+class\s+([A-Z][A-Za-z0-9_]*)/);
+      if (classMatch) return classMatch[1] + ".ts";
+      const ifaceMatch = code.match(/\bexport\s+interface\s+([A-Z][A-Za-z0-9_]*)/);
+      if (ifaceMatch) return ifaceMatch[1] + ".ts";
+      const enumMatch = code.match(/\bexport\s+enum\s+([A-Z][A-Za-z0-9_]*)/);
+      if (enumMatch) return enumMatch[1] + ".ts";
+      const plainClass = code.match(/\bclass\s+([A-Z][A-Za-z0-9_]*)/);
+      if (plainClass) return plainClass[1] + ".ts";
+      return null;
+    }
+    return null;
+  }
+
+  function langToExt(lang) {
+    switch ((lang || "").toLowerCase()) {
+      case "java": return ".java";
+      case "ts":
+      case "typescript": return ".ts";
+      case "json": return ".json";
+      case "yaml":
+      case "yml": return ".yml";
+      default: return ".txt";
+    }
+  }
+
+  function addFile(filename, content) {
+    const container = document.createElement("div");
+    container.className = "file-container";
+
+    const header = document.createElement("div");
+    header.className = "file-header";
+
+    const title = document.createElement("div");
+    title.className = "file-title";
+    title.innerHTML = `📄 <span>${filename}</span> <span class="badge">${filename.split('.').pop().toUpperCase()}</span>`;
+
+    const actions = document.createElement("div");
+    actions.className = "file-actions";
+
+    const btnCopy = document.createElement("button");
+    btnCopy.textContent = "Copy";
+    btnCopy.onclick = (e) => { e.stopPropagation(); copyToClipboard(content); };
+
+    const btnDownload = document.createElement("button");
+    btnDownload.textContent = "Download";
+    btnDownload.onclick = (e) => { e.stopPropagation(); downloadFile(filename, content); };
+
+    actions.appendChild(btnCopy);
+    actions.appendChild(btnDownload);
+
+    header.appendChild(title);
+    header.appendChild(actions);
+
+    const body = document.createElement("div");
+    body.className = "file-content";
+    body.textContent = content;
+
+    header.onclick = () => {
+      body.style.display = body.style.display === "none" ? "block" : "none";
+    };
+
+    container.appendChild(header);
+    container.appendChild(body);
+    filesDiv.appendChild(container);
+  }
+
+  // --- Code fence parser ---
+  function parseAndAddFilesFromChunk(chunk) {
+    const fenceRe = /```(\w+)?\s*([\s\S]*?)```/g;
+    let match;
+    while ((match = fenceRe.exec(chunk)) !== null) {
+      const lang  = (match[1] || "").toLowerCase();
+      const code  = (match[2] || "").trim();
+      const ext   = langToExt(lang);
+      const name  = detectFileName(code, lang) || `File${fileCounter++}${ext}`;
+      addFile(name, code);
+    }
+  }
+
+  // --- WebSocket connection with auto-reconnect ---
+  function connectWebSocket() {
+    ws = new WebSocket("ws://127.0.0.1:8000/ws");
+
+    ws.onopen = () => {
+      appendConsole("✅ Connected to server");
+      statusBar.textContent = "Connected";
+      statusBar.style.color = "#3fb950";
+      reconnectInterval = 2000;
+      populateProjects();
+    };
+
+    ws.onmessage = (e) => {
+      const msg = e.data || "";
+      try {
+        const parsed = JSON.parse(msg);
+        if (parsed.type === "project_list") {
+          handleProjectList(parsed.projects);
+          return;
+        }
+      } catch {}
+      
+      if (collectingConsole) {
+        appendConsole(msg);
+        if (msg.includes("==== GENERATED CODE START ====")) {
+          collectingConsole = false;
+          const idx = msg.indexOf("==== GENERATED CODE START ====");
+          const tail = msg.slice(idx + "==== GENERATED CODE START ====".length);
+          if (tail.trim()) parseAndAddFilesFromChunk(tail);
+          consolePanel.style.display = "none";
+          filesPanel.style.display   = "block";
+        }
+      } else {
+        parseAndAddFilesFromChunk(msg);
+      }
+    };
+
+    ws.onclose = () => {
+      appendConsole("❌ Disconnected from server. Reconnecting...");
+      statusBar.textContent = "Disconnected";
+      statusBar.style.color = "#f85149";
+      setTimeout(connectWebSocket, reconnectInterval);
+      reconnectInterval = Math.min(reconnectInterval * 2, 30000); // exponential backoff
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+      ws.close();
+    };
+  }
+
+  // --- Send task ---
+  function sendTask() {
+    const ctx = document.getElementById("context").value;
+    const task = document.getElementById("task").value;
+    const folder = document.getElementById("folder").value || "MasterMP";
+    const framework  = folder.includes("Progest_FF") ? "angular" : "spring";
+    const includeBackend = document.getElementById("include_backend").checked ? 1 : 0;
+    console.log(folder)
+    console.log(framework)
+    // return;
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ context: ctx, task: task, framework, folder, include_backend:includeBackend }));
+      appendConsole(`📤 Sent new workflow request for [${framework}] in folder [${folder}]`);
+    } else {
+      appendConsole("⚠️ WebSocket not connected. Task will be sent when reconnected.");
+      setTimeout(sendTask, reconnectInterval);
+    }
+
+    // Reset UI
+    collectingConsole = true;
+    fileCounter = 1;
+    consoleDiv.innerHTML = "";
+    filesDiv.innerHTML = "";
+    consolePanel.style.display = "block";
+    filesPanel.style.display = "none";
+  }
+
+  // --- Initial connection ---
+  connectWebSocket();
+</script>
+
+</body>
+</html>
